@@ -28,40 +28,18 @@ resource "aws_iam_role" "task" {
     }]
   })
 }
-# No policy attachments — app has no AWS dependencies at this stage
 
-# ── Security groups ──────────────────────────────────────────────────────────
-resource "aws_security_group" "alb" {
-  name        = "${var.name}-${var.environment}-alb-sg"
-  description = "Allow HTTP from internet to ALB"
-  vpc_id      = var.vpc_id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # ALB SG: the one legitimate open rule
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
+# ── Security group for ECS tasks ─────────────────────────────────────────────
 resource "aws_security_group" "task" {
   name        = "${var.name}-${var.environment}-task-sg"
   description = "ALB security group access only"
   vpc_id      = var.vpc_id
 
   ingress {
-    from_port = 8080
-    to_port   = 8080
-    protocol  = "tcp"
-    # source_security_group_id = aws_security_group.alb.id # SG reference, not CIDR
-    security_groups = [aws_security_group.alb.id] # SG reference, not CIDR
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [var.alb_sg_id] # SG reference, not CIDR
   }
 
   egress {
@@ -100,41 +78,6 @@ resource "aws_ecs_task_definition" "this" {
   }])
 }
 
-# ── ALB + target group + listener ───────────────────────────────────────────
-resource "aws_lb" "this" {
-  name               = "${var.name}-${var.environment}-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets            = var.subnet_ids
-}
-
-resource "aws_lb_target_group" "this" {
-  name        = "${var.name}-${var.environment}-tg"
-  port        = 8080
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
-
-  health_check {
-    path                = "/health"
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    interval            = 30
-  }
-}
-
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.this.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.this.arn
-  }
-}
-
 # ── ECS service ─────────────────────────────────────────────────────────────
 resource "aws_ecs_service" "this" {
   name            = "${var.name}-${var.environment}"
@@ -150,10 +93,8 @@ resource "aws_ecs_service" "this" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.this.arn
+    target_group_arn = var.target_group_arn
     container_name   = var.name
     container_port   = 8080
   }
-
-  depends_on = [aws_lb_listener.http]
 }

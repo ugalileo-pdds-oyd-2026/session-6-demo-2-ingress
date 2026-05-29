@@ -3,28 +3,6 @@ variable "environment" {
   type        = string
 }
 
-variable "name" {
-  description = "Base name applied to all ECS and ALB resources"
-  type        = string
-}
-
-variable "cpu" {
-  description = "Fargate task CPU units (256, 512, 1024, 2048, 4096)"
-  type        = number
-  default     = 256
-}
-
-variable "memory" {
-  description = "Fargate task memory in MB — must be compatible with cpu value"
-  type        = number
-  default     = 512
-}
-
-variable "container_image" {
-  description = "Container image URI including tag (ECR or Docker Hub)"
-  type        = string
-}
-
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   type        = string

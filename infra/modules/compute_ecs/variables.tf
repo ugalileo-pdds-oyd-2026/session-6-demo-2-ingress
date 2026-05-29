@@ -34,3 +34,13 @@ variable "vpc_id" {
   description = "VPC ID where ALB and task security groups will be created"
   type        = string
 }
+
+variable "target_group_arn" {
+  description = "ARN of the ALB target group that ECS tasks will register with"
+  type        = string
+}
+
+variable "alb_sg_id" {
+  description = "Security group ID of the ALB — used to allow ingress on port 8080 from the load balancer"
+  type        = string
+}
